@@ -1,0 +1,56 @@
+name: Add Blog Homepage Section
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-homepage:
+    if: "!contains(github.event.head_commit.message, 'Add blog link and section to homepage')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject blog navigation and section
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+
+          nav_marker = '<li class="nav-item"><a class="nav-link" href="#ai">AI Lab</a></li>'
+          nav_item = '<li class="nav-item"><a class="nav-link" href="blog.html">Blog</a></li>'
+
+          if nav_item not in html:
+              if nav_marker not in html:
+                  raise SystemExit('Navigation marker not found')
+              html = html.replace(nav_marker, nav_marker + '\n          ' + nav_item, 1)
+
+          section_marker = '  <!-- =========================================================\n       AI LAB\n  ========================================================== -->'
+          blog_section = '''  <!-- =========================================================\n       BLOG\n  ========================================================== -->\n  <section id="blog">\n    <div class="container">\n      <div class="text-center mb-5 reveal">\n        <h2 class="section-title">Latest From Our Blog</h2>\n        <p class="section-subtitle">\n          Practical insights on AI, technology, automation, websites, SaaS, CRM, and digital growth.\n        </p>\n      </div>\n\n      <div class="row g-4 justify-content-center">\n        <div class="col-md-8 col-lg-7 reveal">\n          <article class="glass-card p-4 h-100">\n            <div class="d-flex flex-wrap gap-2 mb-3">\n              <span class="tag"><i class="bi bi-stars"></i> Artificial Intelligence</span>\n              <span class="tag"><i class="bi bi-clock"></i> 7 min read</span>\n            </div>\n            <h3 class="h4 fw-bold">What Is AI and How Is It Impacting Our Daily Life?</h3>\n            <p class="text-muted-custom">\n              A simple guide to artificial intelligence, how it is changing everyday life, work, education, healthcare, and business — and what responsible AI use means for the future.\n            </p>\n            <div class="d-flex flex-wrap gap-2 mt-3">\n              <a href="blog/what-is-ai-and-how-it-is-impacting-life.html" class="btn btn-ai rounded-pill px-4">Read Article <i class="bi bi-arrow-right ms-1"></i></a>\n              <a href="blog.html" class="btn btn-outline-glow rounded-pill px-4">View All Blogs <i class="bi bi-journal-text ms-1"></i></a>\n            </div>\n          </article>\n        </div>\n      </div>\n    </div>\n  </section>\n\n'''
+
+          if 'id="blog"' not in html:
+              if section_marker not in html:
+                  raise SystemExit('AI section marker not found')
+              html = html.replace(section_marker, blog_section + section_marker, 1)
+
+          path.write_text(html, encoding='utf-8')
+      - name: Commit homepage changes and remove one-time workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/add-blog-homepage.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/add-blog-homepage.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Add blog link and section to homepage"
+          git push
