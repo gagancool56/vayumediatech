@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Capture client websites
+      - name: Capture high-resolution client websites
         shell: bash
         run: |
           npm install --no-save playwright@1.55.0
@@ -28,10 +28,21 @@ jobs:
               ['https://inventevoinfotech.in/','assets/clients/inventevo-infotech.webp']
             ];
             for (const [url, out] of pages) {
-              const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+              const context = await browser.newContext({
+                viewport: { width: 1600, height: 1000 },
+                deviceScaleFactor: 2,
+                colorScheme: 'light'
+              });
+              const page = await context.newPage();
               await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
-              await page.screenshot({ path: out, fullPage: false, type: 'webp', quality: 70 });
-              await page.close();
+              await page.waitForTimeout(1500);
+              await page.screenshot({
+                path: out,
+                fullPage: false,
+                type: 'webp',
+                quality: 92
+              });
+              await context.close();
             }
             await browser.close();
           })();
@@ -57,5 +68,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html assets/clients .github/workflows/refresh-client-showcase.yml
-          git commit -m "Refresh client showcase previews"
+          git commit -m "Improve client showcase image quality"
           git push
