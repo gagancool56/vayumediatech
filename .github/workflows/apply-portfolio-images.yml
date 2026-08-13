@@ -1,0 +1,42 @@
+name: Apply Portfolio Images
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message != 'Portfolio images applied'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add stock images
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          images = [
+            ('https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85', 'AI CRM Dashboard technology workspace'),
+            ('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=85', 'SaaS analytics dashboard'),
+            ('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=85', 'ERP business analytics workspace'),
+          ]
+          marker = '<div class="project-thumb mb-3"></div>'
+          for url, alt in images:
+            if marker not in s:
+              raise SystemExit('Portfolio placeholder not found')
+            img = f'<div class="project-thumb mb-3"><img src="{url}" alt="{alt}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>'
+            s = s.replace(marker, img, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit and remove updater
+        shell: bash
+        run: |
+          rm -f .github/workflows/apply-portfolio-images.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/apply-portfolio-images.yml
+          git commit -m "Portfolio images applied"
+          git push
