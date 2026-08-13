@@ -1,0 +1,61 @@
+name: Refresh Client Showcase
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  refresh:
+    if: "github.event.head_commit.author.name != 'github-actions[bot]'"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Capture client websites
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          mkdir -p assets/clients
+          node - <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const pages = [
+              ['https://salimcaterers.co.uk/','assets/clients/salim-caterers.webp'],
+              ['https://inventevoinfotech.in/','assets/clients/inventevo-infotech.webp']
+            ];
+            for (const [url, out] of pages) {
+              const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+              await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+              await page.screenshot({ path: out, fullPage: false, type: 'webp', quality: 70 });
+              await page.close();
+            }
+            await browser.close();
+          })();
+          NODE
+      - name: Update homepage showcase
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          html=p.read_text(encoding='utf-8')
+          section='''  <!-- =========================================================\n       CLIENT SHOWCASE\n  ========================================================== -->\n  <section id="client-showcase">\n    <div class="container">\n      <div class="text-center mb-5 reveal">\n        <span class="tag mb-3"><i class="bi bi-briefcase"></i> Selected Work</span>\n        <h2 class="section-title mt-2">Websites We've Built</h2>\n        <p class="section-subtitle">Real websites developed by Vayu Media Tech for businesses across different industries.</p>\n      </div>\n      <div class="row g-4">\n        <div class="col-lg-6 reveal"><article class="glass-card h-100 overflow-hidden"><div class="p-2" style="background:linear-gradient(135deg,rgba(109,94,252,.24),rgba(0,212,255,.16));"><div class="rounded-4 overflow-hidden bg-white" style="height:320px;"><img src="assets/clients/salim-caterers.webp" alt="Salim Caterers website developed by Vayu Media Tech" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block;" /></div></div><div class="p-4"><div class="d-flex flex-wrap gap-2 mb-3"><span class="tag"><i class="bi bi-cup-hot"></i> Hospitality</span><span class="tag"><i class="bi bi-geo-alt"></i> United Kingdom</span></div><h3 class="h4 fw-bold">Salim Caterers</h3><p class="text-muted-custom">A premium catering website focused on authentic home-cooked food, events, menus, services, testimonials, FAQs, and customer enquiries across London.</p><a href="https://salimcaterers.co.uk/" target="_blank" rel="noopener noreferrer" class="btn btn-outline-glow rounded-pill px-4">Visit Website <i class="bi bi-box-arrow-up-right ms-1"></i></a></div></article></div>\n        <div class="col-lg-6 reveal"><article class="glass-card h-100 overflow-hidden"><div class="p-2" style="background:linear-gradient(135deg,rgba(0,212,255,.20),rgba(109,94,252,.22));"><div class="rounded-4 overflow-hidden bg-white" style="height:320px;"><img src="assets/clients/inventevo-infotech.webp" alt="Inventevo Infotech website developed by Vayu Media Tech" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block;" /></div></div><div class="p-4"><div class="d-flex flex-wrap gap-2 mb-3"><span class="tag"><i class="bi bi-cpu"></i> IT & BPO</span><span class="tag"><i class="bi bi-geo-alt"></i> India</span></div><h3 class="h4 fw-bold">Inventevo Infotech</h3><p class="text-muted-custom">A business-focused website presenting IT, BPO, SEO, digital marketing, lead generation, Google Ads, and e-commerce services with a clear conversion-oriented structure.</p><a href="https://inventevoinfotech.in/" target="_blank" rel="noopener noreferrer" class="btn btn-outline-glow rounded-pill px-4">Visit Website <i class="bi bi-box-arrow-up-right ms-1"></i></a></div></article></div>\n      </div>\n      <div class="text-center mt-5 reveal"><p class="text-muted-custom mb-3">Have a project in mind?</p><a href="#contact" class="btn btn-ai rounded-pill px-4">Start Your Project <i class="bi bi-arrow-right ms-1"></i></a></div>\n    </div>\n  </section>\n\n'''
+          pattern=r'  <section id="client-showcase">.*?  </section>\n'
+          if re.search(pattern,html,re.S): html=re.sub(pattern,section,html,count=1,flags=re.S)
+          else:
+              marker='  <!-- =========================================================\n       BLOG\n  ========================================================== -->'
+              html=html.replace(marker,section+marker,1)
+          p.write_text(html,encoding='utf-8')
+      - name: Commit changes
+        shell: bash
+        run: |
+          rm -f .github/workflows/refresh-client-showcase.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html assets/clients .github/workflows/refresh-client-showcase.yml
+          git commit -m "Refresh client showcase previews"
+          git push
