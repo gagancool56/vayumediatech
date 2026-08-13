@@ -1,0 +1,70 @@
+name: Add Portfolio Stock Images
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-portfolio-images:
+    if: "!contains(github.event.head_commit.message, 'Add free stock images to portfolio cards')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace portfolio placeholders with free stock images
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+
+          cards = [
+              (
+                  'AI CRM Dashboard',
+                  'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85',
+                  'Free Unsplash business technology workspace image for the AI CRM Dashboard portfolio concept'
+              ),
+              (
+                  'SaaS Analytics Platform',
+                  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=85',
+                  'Free Unsplash analytics dashboard image for the SaaS Analytics Platform portfolio concept'
+              ),
+              (
+                  'ERP Automation System',
+                  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=85',
+                  'Free Unsplash business analytics technology image for the ERP Automation System portfolio concept'
+              ),
+          ]
+
+          for title, url, alt in cards:
+              marker = '<div class="project-thumb mb-3"></div>'
+              replacement = (
+                  '<div class="project-thumb mb-3">'
+                  f'<img src="{url}" alt="{alt}" loading="lazy" decoding="async" '
+                  'style="width:100%;height:100%;object-fit:cover;display:block;" />'
+                  '</div>'
+              )
+              if marker not in html:
+                  raise SystemExit(f'Portfolio placeholder not found for {title}')
+              html = html.replace(marker, replacement, 1)
+
+          path.write_text(html, encoding='utf-8')
+      - name: Commit changes and remove one-time workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/add-portfolio-stock-images.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/add-portfolio-stock-images.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Add free stock images to portfolio cards"
+          git push
